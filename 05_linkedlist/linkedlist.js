@@ -81,7 +81,7 @@ class LinkedList {
     let current = this.head
     while (current) {
       if (current.data === key) {
-        return
+        return true
       }
       current = current.next
     }
