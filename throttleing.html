@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Infinite Scroll with Throttling Example</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 1rem;
+      }
+      .item {
+        padding: 1rem;
+        margin: 0.5rem 0;
+        background: #f0f0f0;
+        border-radius: 4px;
+      }
+      .loading {
+        text-align: center;
+        padding: 1rem;
+        font-style: italic;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container" id="container">
+      <!-- Items will be appended here -->
+    </div>
+    <div class="loading" id="loading" style="display: none">Loading...</div>
+
+    <script>
+      // Throttle utility: ensures fn runs at most once per 'limit' ms
+      function throttle(fn, wait = 300) {
+        let lastCallTime = 0;
+        let timeoutId = null;
+
+        return function (...args) {
+          const now = Date.now();
+          const remaining = wait - (now - lastCallTime);
+          const context = this;
+
+          // If we're past the wait, call immediately:
+          if (remaining <= 0) {
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+              timeoutId = null;
+            }
+            lastCallTime = now;
+            fn.apply(context, args);
+
+            // Otherwise, schedule a trailing call if one isn't already scheduled
+          } else if (!timeoutId) {
+            timeoutId = setTimeout(() => {
+              lastCallTime = Date.now();
+              timeoutId = null;
+              fn.apply(context, args);
+            }, remaining);
+          }
+        };
+      }
+
+      const container = document.getElementById("container");
+      const loading = document.getElementById("loading");
+      let itemCount = 0;
+      const batchSize = 20;
+
+      // Prevent multiple loads at the same time
+      let isLoading = false;
+
+      // Function to create and append items
+      function loadItems() {
+        if (isLoading) return;
+        isLoading = true;
+        console.log(`load items called`);
+        loading.style.display = "block";
+
+        // Simulate async load
+        setTimeout(() => {
+          for (let i = 0; i < batchSize; i++) {
+            itemCount++;
+            const div = document.createElement("div");
+            div.className = "item";
+            div.textContent = "Item " + itemCount;
+            container.appendChild(div);
+          }
+          loading.style.display = "none";
+          isLoading = false;
+
+          // 🔁 Re-check if more items should be loaded (in case scroll is still at bottom)
+          handleScroll();
+        }, 500);
+      }
+
+      // Check if near bottom of page
+      function handleScroll() {
+        console.log("handle scroll called");
+        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+        const windowHeight = window.innerHeight;
+        const docHeight = document.documentElement.scrollHeight;
+
+        // Check if user has reached the very end of the page
+        console.log(Math.abs(scrollTop + windowHeight - docHeight));
+        if (Math.abs(scrollTop + windowHeight - docHeight) < 1) {
+          loadItems();
+          console.log("Reached end, loading items");
+        } else {
+          console.log("Not at end yet");
+        }
+      }
+
+      // Throttled scroll handler
+      const throttledScroll = throttle(handleScroll, 300);
+      window.addEventListener("scroll", throttledScroll);
+
+      // Initial load
+      loadItems();
+    </script>
+  </body>
+</html>
